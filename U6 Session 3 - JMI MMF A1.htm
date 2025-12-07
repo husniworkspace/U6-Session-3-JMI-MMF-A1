@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JMI MMF A1 - U6 S3: Le Passé Récent (Live AI)</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --terminal-green: #33ff00;
+            --terminal-red: #ff0055;
+            --crt-bg: #0a0a0a;
+            --text-main: #e0e0e0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: 'VT323', monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: var(--text-main);
+            user-select: none;
+        }
+
+        /* 16:9 Container */
+        #presentation-container {
+            width: 1280px;
+            height: 720px;
+            background: var(--crt-bg);
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #333;
+            box-shadow: 0 0 80px rgba(0, 243, 255, 0.15);
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px);
+            transform-origin: center center;
+        }
+
+        /* --- VCR SCANLINES --- */
+        .scanlines {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.6;
+        }
+
+        .osd-text {
+            position: absolute; top: 30px; left: 40px;
+            font-size: 2rem; color: var(--terminal-green);
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.8);
+            z-index: 900;
+        }
+
+        .channel-num {
+            position: absolute; top: 30px; right: 40px;
+            font-size: 2rem; color: var(--terminal-green);
+            z-index: 900;
+        }
+
+        /* --- SLIDES --- */
+        .slide {
+            width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+            display: none;
+            padding: 60px 80px;
+            box-sizing: border-box;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+            flex-direction: column;
+        }
+
+        .slide.active { display: flex; animation: flicker 0.3s ease-out; }
+
+        @keyframes flicker {
+            0% { opacity: 0.1; } 20% { opacity: 1; } 40% { opacity: 0.1; } 60% { opacity: 1; } 80% { opacity: 0.5; } 100% { opacity: 1; }
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            color: var(--neon-pink);
+            font-size: 2rem;
+            text-shadow: 3px 3px 0px var(--neon-blue);
+            margin: 10px 0 20px 0;
+            line-height: 1.4;
+        }
+
+        h2 { color: var(--neon-blue); font-size: 1.8rem; margin-top: 0; border-bottom: 2px solid var(--neon-blue); display: inline-block; }
+        p, li { font-size: 1.6rem; line-height: 1.3; }
+        
+        /* --- LAYOUTS --- */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; height: 80%; align-items: center; }
+        
+        .retro-box {
+            border: 2px solid #fff;
+            padding: 20px;
+            background: rgba(0,0,0,0.6);
+            box-shadow: 5px 5px 0px var(--neon-blue);
+            max-height: 100%;
+            overflow-y: auto;
+        }
+
+        .img-container {
+            width: 100%; height: 100%; max-height: 400px;
+            border: 2px solid #555;
+            overflow: hidden;
+        }
+        .img-container img { width: 100%; height: 100%; object-fit: cover; filter: sepia(0.4) contrast(1.2); }
+
+        /* --- FLIP CARDS --- */
+        .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px; }
+        .flip-card { height: 200px; perspective: 1000px; cursor: pointer; }
+        .flip-card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; }
+        .flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
+        .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border: 3px solid var(--neon-pink); display: flex; flex-direction: column; justify-content: center; align-items: center; background: #111; }
+        .flip-card-back { background: var(--neon-blue); color: #000; transform: rotateY(180deg); border-color: #fff; }
+
+        /* --- ARCADE INPUTS --- */
+        .arcade-input {
+            background: #000;
+            border: none;
+            border-bottom: 3px solid #fff;
+            color: var(--neon-blue);
+            font-family: 'Press Start 2P';
+            font-size: 1.2rem;
+            width: 150px;
+            text-align: center;
+            outline: none;
+            transition: 0.3s;
+        }
+        .arcade-input:focus { border-bottom-color: var(--neon-pink); transform: scale(1.1); }
+        .arcade-input.correct { border-color: var(--terminal-green); color: var(--terminal-green); background: rgba(51, 255, 0, 0.1); }
+        .arcade-input.wrong { border-color: var(--terminal-red); color: var(--terminal-red); animation: shake 0.4s; }
+
+        /* --- TERMINAL (AI) --- */
+        .terminal {
+            background: #000; border: 2px solid var(--terminal-green);
+            height: 100%; padding: 20px; display: flex; flex-direction: column;
+            font-family: 'VT323', monospace; box-shadow: 0 0 20px rgba(51, 255, 0, 0.2);
+        }
+        .terminal-output { flex: 1; overflow-y: auto; font-size: 1.4rem; margin-bottom: 10px; border-bottom: 1px dashed #333; }
+        .msg-sys { color: #888; font-style: italic; font-size: 1rem; }
+        .msg-user { color: #fff; }
+        .msg-bot { color: var(--terminal-green); text-shadow: 0 0 5px var(--terminal-green); }
+        .msg-err { color: var(--terminal-red); font-weight: bold; background: rgba(255,0,0,0.1); padding: 2px; }
+
+        /* --- NAV --- */
+        .nav-bar { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: center; gap: 50px; z-index: 1000; }
+        .vhs-btn { background: #222; color: #888; border: 2px solid #555; padding: 10px 40px; font-family: 'Press Start 2P'; font-size: 0.8rem; cursor: pointer; box-shadow: inset 3px 3px 0 #000; transition: 0.2s;}
+        .vhs-btn:hover { color: #fff; border-color: #fff; transform: translateY(-2px); box-shadow: 0 0 15px rgba(255,255,255,0.5); }
+        .vhs-btn:active { transform: translateY(2px); }
+        .vhs-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
+        
+        .hidden { display: none; }
+        .revealed { animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div id="presentation-container">
+    <div class="scanlines"></div>
+    <div class="osd-text" id="clock">PLAY 00:00:00</div>
+    <div class="channel-num">CH 06</div>
+
+    <div class="slide active" style="text-align:center; justify-content:center;">
+        <i class="fa-solid fa-tape" style="font-size: 6rem; color: var(--neon-blue); margin-bottom: 20px; animation: spin 5s linear infinite;"></i>
+        <h1>LE PASSÉ RÉCENT</h1>
+        <h2 style="font-family:'VT323'; font-size: 2.5rem; color: #fff;">Qu'est-ce qu'on fait aujourd'hui ?</h2>
+        <p style="color: var(--terminal-green); margin-top: 20px; font-size: 2rem;">UNITÉ 6 - SESSION 3</p>
+        <p style="font-size: 1.2rem; color: #888;">(Expressing actions that just happened)</p>
+    </div>
+
+    <div class="slide">
+        <h1>🎯 OBJECTIFS</h1>
+        <div class="grid-2">
+            <div class="retro-box">
+                <ul style="font-size: 1.4rem;">
+                    <li style="margin-bottom: 20px;">Comprendre le <strong>Passé Récent</strong>.</li>
+                    <li style="margin-bottom: 20px;">Conjuguer le verbe <strong>VENIR</strong>.</li>
+                    <li style="margin-bottom: 20px;">Vocabulaire : Les séries et les sorties.</li>
+                    <li>Utiliser "Je viens de...".</li>
+                </ul>
+            </div>
+            <div class="img-container">
+                <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000&auto=format&fit=crop" alt="Students">
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>❄️ BRISE-GLACE</h1>
+        <p>Qu'est-ce qu'il fait ? (What is he doing?)</p>
+        <div class="grid-2">
+            <div class="img-container">
+                <img src="https://images.unsplash.com/photo-1521967906867-14ec9d64bee8?q=80&w=1000&auto=format&fit=crop" alt="Netflix">
+            </div>
+            <div class="retro-box">
+                <p>1. Il regarde la télé ?</p>
+                <p>2. Il dort ?</p>
+                <p>3. Il mange ?</p>
+                <button class="vhs-btn" style="margin-top: 20px;" onclick="revealAnswer('ib-ans', 'Il regarde une série.')">RÉPONSE</button>
+                <p id="ib-ans" class="hidden" style="color: var(--neon-pink); margin-top: 20px;">Réponse : Il regarde une série.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>📚 VOCABULAIRE : ACTIONS</h1>
+        <p>Cliquez sur les cartes pour voir la traduction.</p>
+        <div class="card-grid">
+            <div class="flip-card" onclick="this.classList.toggle('flipped')">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front"><i class="fa-solid fa-person-walking-arrow-right" style="font-size:4rem;"></i></div>
+                    <div class="flip-card-back"><h3>PARTIR</h3><p>(To leave)</p></div>
+                </div>
+            </div>
+            <div class="flip-card" onclick="this.classList.toggle('flipped')">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front"><i class="fa-solid fa-door-open" style="font-size:4rem;"></i></div>
+                    <div class="flip-card-back"><h3>SORTIR</h3><p>(To go out)</p></div>
+                </div>
+            </div>
+            <div class="flip-card" onclick="this.classList.toggle('flipped')">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front"><i class="fa-solid fa-bed" style="font-size:4rem;"></i></div>
+                    <div class="flip-card-back"><h3>DORMIR</h3><p>(To sleep)</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>🔑 CONJUGAISON : VENIR (1)</h1>
+        <p style="color: var(--neon-blue);">Mission: Tapez la conjugaison correcte !</p>
+        <div class="grid-2">
+            <div class="retro-box">
+                <p>JE <input type="text" class="arcade-input" data-ans="viens"> (de Paris)</p>
+                <p>TU <input type="text" class="arcade-input" data-ans="viens"> (ici)</p>
+                <p>IL <input type="text" class="arcade-input" data-ans="vient"> (ce soir)</p>
+                <button class="vhs-btn" style="margin-top: 20px; border-color: var(--terminal-green); color: var(--terminal-green);" onclick="checkDrill(this)">VÉRIFIER</button>
+            </div>
+            <div style="font-size: 8rem; text-align: center; color: #333; font-family:'Press Start 2P';">lvl 1</div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>🔑 CONJUGAISON : VENIR (2)</h1>
+        <p style="color: var(--neon-blue);">Mission: Tapez la conjugaison correcte !</p>
+        <div class="grid-2">
+            <div class="retro-box">
+                <p>NOUS <input type="text" class="arcade-input" data-ans="venons"> (demain)</p>
+                <p>VOUS <input type="text" class="arcade-input" data-ans="venez"> (avec moi ?)</p>
+                <p>ELLES <input type="text" class="arcade-input" data-ans="viennent"> (de partir)</p>
+                <button class="vhs-btn" style="margin-top: 20px; border-color: var(--terminal-green); color: var(--terminal-green);" onclick="checkDrill(this)">VÉRIFIER</button>
+            </div>
+            <div style="font-size: 8rem; text-align: center; color: #333; font-family:'Press Start 2P';">lvl 2</div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1 style="text-align: center;">📐 LA RÈGLE</h1>
+        <div style="border: 4px dashed var(--terminal-green); padding: 30px; margin: 30px; text-align: center; background: #000;">
+            <span style="color: var(--neon-pink); font-weight: bold; font-size: 2.5rem;">VENIR</span> (au présent)<br>
+            <span style="color: #fff; font-size: 2rem;">+</span><br>
+            <span style="color: var(--neon-pink); font-weight: bold; font-size: 2.5rem;">DE</span> (ou D')<br>
+            <span style="color: #fff; font-size: 2rem;">+</span><br>
+            <span style="color: var(--neon-pink); font-weight: bold; font-size: 2.5rem;">INFINITIF</span>
+        </div>
+        <p style="text-align: center; color: var(--neon-blue); font-size: 2rem;">"Je viens de manger."</p>
+    </div>
+
+    <div class="slide">
+        <h1>⏳ LA LIGNE DU TEMPS</h1>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 100px; position: relative;">
+            <div style="height: 4px; background: #fff; width: 100%; position: absolute; z-index: 0;"></div>
+            
+            <div style="text-align: center; z-index: 1;">
+                <div style="width: 20px; height: 20px; background: #555; border-radius: 50%; margin: 0 auto;"></div>
+                <p style="background: #000; padding: 5px;">Passé Composé</p>
+            </div>
+
+            <div style="text-align: center; z-index: 1;">
+                <div style="width: 40px; height: 40px; background: var(--neon-pink); border-radius: 50%; margin: 0 auto; box-shadow: 0 0 20px var(--neon-pink);"></div>
+                <p style="color: var(--neon-pink); background: #000; padding: 5px; font-weight: bold;">PASSÉ RÉCENT<br>(Just now)</p>
+            </div>
+
+            <div style="text-align: center; z-index: 1;">
+                <div style="width: 20px; height: 20px; background: #fff; border-radius: 50%; margin: 0 auto;"></div>
+                <p style="background: #000; padding: 5px;">PRÉSENT</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>⚠️ DE ou D' ?</h1>
+        <div class="grid-2">
+            <div class="retro-box">
+                <h2 style="color: var(--neon-pink);">DE + Consonne</h2>
+                <p>Je viens <strong>de</strong> <span style="text-decoration: underline;">m</span>anger.</p>
+                <p>Tu viens <strong>de</strong> <span style="text-decoration: underline;">p</span>artir.</p>
+            </div>
+            <div class="retro-box">
+                <h2 style="color: var(--neon-blue);">D' + Voyelle / H</h2>
+                <p>Il vient <strong>d'</strong><span style="text-decoration: underline;">a</span>rriver.</p>
+                <p>Nous venons <strong>d'</strong><span style="text-decoration: underline;">é</span>couter.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>✍️ PRATIQUE (1)</h1>
+        <p>Transformez les phrases.</p>
+        <div class="retro-box">
+            <div style="margin-bottom: 30px;">
+                <p>1. Je finis mon café.</p>
+                <div style="display:flex; gap:20px; align-items:center;">
+                    <button class="vhs-btn" onclick="revealAnswer('p1-ans', 'Je viens de finir mon café.')">RÉPONSE</button>
+                    <p id="p1-ans" class="hidden" style="color: var(--terminal-green);">-> Je viens de finir mon café.</p>
+                </div>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <p>2. Ils regardent un film.</p>
+                <div style="display:flex; gap:20px; align-items:center;">
+                    <button class="vhs-btn" onclick="revealAnswer('p2-ans', 'Ils viennent de regarder un film.')">RÉPONSE</button>
+                    <p id="p2-ans" class="hidden" style="color: var(--terminal-green);">-> Ils viennent de regarder un film.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>🔥 PRATIQUE (2) : DIFFICILE</h1>
+        <p>Les verbes pronominaux (se lever, se doucher).</p>
+        <div class="retro-box">
+            <p><strong>Règle :</strong> Le pronom change !</p>
+            <p style="color: var(--neon-blue);">"Je viens de ME lever."</p>
+            <hr>
+            <p>1. Tu te douches.</p>
+            <div style="display:flex; gap:20px; align-items:center;">
+                <button class="vhs-btn" onclick="revealAnswer('p3-ans', 'Tu viens de te doucher.')">RÉPONSE</button>
+                <p id="p3-ans" class="hidden" style="color: var(--terminal-green);">-> Tu viens de TE doucher.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>📺 CONTEXTE (ÉDITO A1)</h1>
+        <div class="grid-2">
+            <div class="img-container">
+                <img src="https://images.unsplash.com/photo-1593784991095-a205069470b6?q=80&w=1000&auto=format&fit=crop" alt="TV Room">
+            </div>
+            <div class="retro-box">
+                <h2>Situation</h2>
+                <p>Jade et Stan sont des amis.</p>
+                <p>Ils sont fans de séries TV.</p>
+                <p>Jade arrive chez Stan.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>🎧 ÉCOUTE (SLOW AUDIO)</h1>
+        <div style="border: 4px solid #888; background: #222; padding: 20px; text-align: center; width: 60%; margin: 20px auto;">
+            <p style="color: var(--neon-pink); font-size: 1.5rem; margin-bottom: 20px;">TRACK 01: Jade & Stan (0.8x)</p>
+            <div style="display: flex; justify-content: center; gap: 50px; margin-bottom: 30px;">
+                <div id="avatar-jade" style="font-size: 4rem; opacity: 0.3; transition:0.3s;"><i class="fa-solid fa-venus"></i></div>
+                <div id="avatar-stan" style="font-size: 4rem; opacity: 0.3; transition:0.3s;"><i class="fa-solid fa-mars"></i></div>
+            </div>
+            <button class="vhs-btn" onclick="playDialogue()">▶ PLAY</button>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>❓ COMPRÉHENSION (1)</h1>
+        <p>Stan est sur le canapé. Qu'est-ce qu'il vient de faire ?</p>
+        <div class="grid-2">
+            <div class="retro-box">
+                <button class="vhs-btn" style="width:100%; margin:10px 0; text-align:left;" onclick="checkChoice(this, false)">A. Il vient de manger.</button>
+                <button class="vhs-btn" style="width:100%; margin:10px 0; text-align:left;" onclick="checkChoice(this, true)">B. Il vient de finir son travail.</button>
+                <button class="vhs-btn" style="width:100%; margin:10px 0; text-align:left;" onclick="checkChoice(this, false)">C. Il vient de dormir.</button>
+            </div>
+            <div class="img-container">
+                <img src="https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=1000&auto=format&fit=crop">
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>❓ COMPRÉHENSION (2)</h1>
+        <p>De quelle série parlent-ils ?</p>
+        <div class="retro-box">
+            <button class="vhs-btn" style="width:100%; margin:10px 0; text-align:left;" onclick="checkChoice(this, false)">A. Lupin</button>
+            <button class="vhs-btn" style="width:100%; margin:10px 0; text-align:left;" onclick="checkChoice(this, true)">B. Baron Noir</button>
+            <button class="vhs-btn" style="width:100%; margin:10px 0; text-align:left;" onclick="checkChoice(this, false)">C. Dix pour cent</button>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>❓ COMPRÉHENSION (3)</h1>
+        <p>Jade a aimé l'épisode ?</p>
+        <div class="retro-box">
+            <button class="vhs-btn" style="width:100%; margin:10px 0; text-align:left;" onclick="checkChoice(this, true)">A. Oui, elle vient de comprendre la fin.</button>
+            <button class="vhs-btn" style="width:100%; margin:10px 0; text-align:left;" onclick="checkChoice(this, false)">B. Non, elle déteste la politique.</button>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>🇫🇷 CULTURE : SÉRIES</h1>
+        <p>Les séries françaises célèbres (Source p. 95)</p>
+        <div class="card-grid">
+            <div class="retro-box" style="text-align:center;">
+                <h3 style="color:var(--neon-pink);">Dix pour cent</h3>
+                <p style="font-size: 1rem;">(Call My Agent)</p>
+                <p style="font-size: 1rem; color: #888;">La vie d'une agence d'acteurs.</p>
+            </div>
+            <div class="retro-box" style="text-align:center;">
+                <h3 style="color:var(--neon-blue);">Lupin</h3>
+                <p style="font-size: 1rem;">(Omar Sy)</p>
+                <p style="font-size: 1rem; color: #888;">Mystère et action à Paris.</p>
+            </div>
+            <div class="retro-box" style="text-align:center;">
+                <h3 style="color:var(--terminal-green);">Le Bureau</h3>
+                <p style="font-size: 1rem;">(The Bureau)</p>
+                <p style="font-size: 1rem; color: #888;">Espionnage et services secrets.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>🕵️ JEU DE RÔLE : L'ALIBI</h1>
+        <div class="grid-2">
+            <div class="retro-box">
+                <h2 style="color: var(--terminal-red);">POLICE !</h2>
+                <p>Il y a un problème.</p>
+                <p>La police vous demande : <strong>"Qu'est-ce que vous venez de faire ?"</strong></p>
+                <p>Inventez un alibi !</p>
+            </div>
+            <div class="retro-box" style="border-style: dashed;">
+                <p>"Je viens de..."</p>
+                <ul>
+                    <li>acheter du pain.</li>
+                    <li>voir ma grand-mère.</li>
+                    <li>sortir du cinéma.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>🤖 CHALLENGE IA</h1>
+        <p>Vous allez parler avec une IA.</p>
+        <div class="retro-box">
+            <h2>SCÉNARIO</h2>
+            <p>Vous êtes au téléphone avec un ami français.</p>
+            <p>Il vous demande : <strong>"Salut ! Tu fais quoi ?"</strong></p>
+            <p>Répondez avec le <strong>Passé Récent</strong>.</p>
+            <p style="color: var(--neon-blue);">Ex: "Salut ! Je viens de rentrer."</p>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>💻 TERMINAL DE CHAT</h1>
+        <div class="terminal">
+            <div class="terminal-output" id="chat-history">
+                <div class="msg-sys">INITIALIZING SYSTEM...</div>
+                <div class="msg-bot">AMI: Salut ! Ça va ? Tu fais quoi de beau ?</div>
+            </div>
+            
+            <input type="password" id="api-key" value="AIzaSyAuSsiuaNcZb5jmYQOjRRg1pmZKgkdtUIA" style="display:none;">
+            
+            <div style="display:flex; gap:10px; align-items:center;">
+                <span style="color:var(--neon-pink); font-size: 1.5rem;">></span>
+                <input type="text" id="user-input" style="flex:1; background:transparent; border:none; border-bottom:2px solid var(--terminal-green); color:#fff; font-family:'VT323'; font-size:1.5rem; outline:none;" placeholder="Je viens de..." onkeypress="if(event.key==='Enter') sendMessage()" autofocus>
+                <button class="vhs-btn" style="padding: 5px 15px;" id="send-btn" onclick="sendMessage()">SEND</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <h1>📝 RÉSUMÉ</h1>
+        <div class="grid-2">
+            <div class="retro-box">
+                <h3 style="color: var(--neon-pink);">GRAMMAIRE</h3>
+                <p>Venir + de + Infinitif</p>
+                <p>Je viens de manger.</p>
+                <p>Tu viens de partir.</p>
+            </div>
+            <div class="retro-box">
+                <h3 style="color: var(--neon-blue);">VOCABULAIRE</h3>
+                <p>Une série / Un épisode</p>
+                <p>Regarder / Finir / Commencer</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <div style="text-align: center; margin-top: 100px;">
+            <i class="fa-solid fa-eject" style="font-size: 6rem; color: var(--neon-blue);"></i>
+            <h1>FIN DE LA SESSION</h1>
+            <p>Bravo !</p>
+            <div class="retro-box" style="display:inline-block; margin-top: 30px;">
+                <p>Devoirs (Homework):</p>
+                <p>Édito A1 - Page 96, Exercice 3</p>
+            </div>
+            <p style="margin-top: 50px; font-size: 1rem; color: #555;">REWINDING TAPE...</p>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <button class="vhs-btn" onclick="changeSlide(-1)"><i class="fa-solid fa-backward"></i> PREV</button>
+        <button class="vhs-btn" onclick="changeSlide(1)">NEXT <i class="fa-solid fa-forward"></i></button>
+    </div>
+
+</div>
+
+<script>
+    /* --- ENGINE --- */
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const clock = document.getElementById('clock');
+
+    setInterval(() => {
+        const now = new Date();
+        clock.innerText = `PLAY ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+    }, 1000);
+
+    function changeSlide(n) {
+        slides[currentSlide].classList.remove('active');
+        currentSlide = (currentSlide + n + slides.length) % slides.length;
+        slides[currentSlide].classList.add('active');
+        window.speechSynthesis.cancel();
+    }
+
+    function resize() {
+        const container = document.getElementById('presentation-container');
+        const scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+        container.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('resize', resize);
+    window.addEventListener('load', resize);
+
+    /* --- AUDIO ENGINE --- */
+    function speak(text, rate = 0.8, pitch = 1) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'fr-FR';
+        u.rate = rate;
+        u.pitch = pitch;
+        window.speechSynthesis.speak(u);
+    }
+
+    // Sound FX Generation
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(type) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        if(type === 'correct') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        } else {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        }
+    }
+
+    /* --- INTERACTIONS --- */
+    function revealAnswer(id, text) {
+        const el = document.getElementById(id);
+        el.classList.remove('hidden');
+        el.classList.add('revealed');
+        speak(text);
+    }
+
+    function checkChoice(btn, isCorrect) {
+        if (isCorrect) {
+            btn.style.borderColor = "var(--terminal-green)";
+            btn.style.color = "var(--terminal-green)";
+            playSound('correct');
+            speak("Bravo !");
+        } else {
+            btn.style.borderColor = "red";
+            btn.style.color = "red";
+            playSound('wrong');
+            speak("Non.");
+            setTimeout(() => {
+                btn.style.borderColor = "#fff";
+                btn.style.color = "#888";
+            }, 1000);
+        }
+    }
+
+    /* --- CONJUGATION DRILL (Arcade) --- */
+    function checkDrill(btn) {
+        const container = btn.parentElement;
+        const inputs = container.querySelectorAll('input');
+        let allCorrect = true;
+
+        inputs.forEach(input => {
+            const userAns = input.value.trim().toLowerCase();
+            const correctAns = input.dataset.ans;
+            
+            if (userAns === correctAns) {
+                input.classList.add('correct');
+                input.classList.remove('wrong');
+            } else {
+                input.classList.add('wrong');
+                input.classList.remove('correct');
+                allCorrect = false;
+            }
+        });
+
+        if (allCorrect) {
+            playSound('correct');
+            speak("Excellent !");
+        } else {
+            playSound('wrong');
+            speak("Corrige les erreurs.");
+        }
+    }
+
+    /* --- DIALOGUE --- */
+    function playDialogue() {
+        const jade = document.getElementById('avatar-jade');
+        const stan = document.getElementById('avatar-stan');
+        
+        const lines = [
+            { t: "Salut Stan ! Tu viens d'arriver ?", s: jade, p: 1.2 },
+            { t: "Oui, je viens de finir le travail. Et toi ?", s: stan, p: 0.9 },
+            { t: "Moi ? Je viens de regarder le dernier épisode de Baron Noir.", s: jade, p: 1.2 },
+            { t: "Ah ! C'est bien ?", s: stan, p: 0.9 },
+            { t: "C'est génial. Je viens de comprendre la fin !", s: jade, p: 1.2 }
+        ];
+
+        let delay = 0;
+        lines.forEach(line => {
+            setTimeout(() => {
+                jade.style.opacity = line.s === jade ? "1" : "0.3";
+                stan.style.opacity = line.s === stan ? "1" : "0.3";
+                speak(line.t, 0.75, line.p);
+            }, delay);
+            delay += (line.t.split(' ').length * 700) + 1200;
+        });
+        
+        setTimeout(() => {
+            jade.style.opacity = "0.3";
+            stan.style.opacity = "0.3";
+        }, delay);
+    }
+
+    /* --- AI CHATBOT (Smart Fallback) --- */
+    const chatHistory = document.getElementById('chat-history');
+    const userInput = document.getElementById('user-input');
+    const apiKeyInput = document.getElementById('api-key');
+    const sendBtn = document.getElementById('send-btn');
+
+    function logChat(text, type) {
+        const div = document.createElement('div');
+        div.className = 'msg-' + type;
+        div.innerText = (type === 'user' ? 'VOUS: ' : (type === 'bot' ? 'AMI: ' : 'SYS: ')) + text;
+        chatHistory.appendChild(div);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        if(type === 'bot') speak(text, 0.85);
+    }
+
+    async function sendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+        
+        sendBtn.disabled = true; // Debounce
+        logChat(text, 'user');
+        userInput.value = '';
+        
+        const apiKey = apiKeyInput.value.trim();
+
+        // 1. Connection Logic
+        if(apiKey && apiKey.length > 10) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{ text: `Roleplay: You are a French friend. The user is an A1 student learning "Le passé récent" (venir de + infinitive). The user says: "${text}". Reply simply in French. Correct them gently if needed.` }]
+                        }]
+                    })
+                });
+                
+                if (!response.ok) throw new Error(`Error ${response.status}`);
+                
+                const data = await response.json();
+                const reply = data.candidates[0].content.parts[0].text;
+                logChat(reply, 'bot');
+                
+            } catch(e) {
+                logChat("CONN FAILED: " + e.message, 'err');
+                fallbackMode(text);
+            }
+        } else {
+            console.log("No key, using fallback");
+            fallbackMode(text);
+        }
+        
+        sendBtn.disabled = false;
+    }
+
+    function fallbackMode(text) {
+        logChat("SWITCHING TO OFFLINE BRAIN...", 'sys');
+        setTimeout(() => {
+            let r = "Ah bon ?";
+            const t = text.toLowerCase();
+            if (t.includes("viens de") || t.includes("viens d'")) {
+                if (t.includes("manger") || t.includes("restaurant")) r = "C'était bon ? Tu as mangé quoi ?";
+                else if (t.includes("regarder") || t.includes("film") || t.includes("série")) r = "Ah super ! C'était intéressant ?";
+                else if (t.includes("travaill") || t.includes("bureau")) r = "Tu dois être fatigué ! Repose-toi.";
+                else if (t.includes("sortir") || t.includes("partir")) r = "Tu es allé où ?";
+                else r = "Super ! Et maintenant, tu vas faire quoi ?";
+            } else {
+                r = "Attention ! Utilise : 'Je viens de' + verbe (pour le passé récent).";
+            }
+            logChat(r, 'bot');
+        }, 1000);
+    }
+</script>
+</body>
+</html>
